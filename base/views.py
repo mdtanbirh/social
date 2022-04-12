@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .models import Room, Topic, Message
 from django.http import HttpResponse
-from .forms import RoomForm
+from .forms import RoomForm, UserForm
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.contrib.auth.forms import UserCreationForm
@@ -65,7 +65,7 @@ def home(request):
         Q(description__icontains=q)
     )
 
-    topics = Topic.objects.all()
+    topics = Topic.objects.all()[0:5]
     room_count = rooms.count()
     room_message = Message.objects.filter(Q(room__topic__name__icontains=q))
 
@@ -169,3 +169,27 @@ def deleteMessage(request, pk):
         message.delete()
         return redirect('home')
     return render(request, 'base/delete.html', {'obj': message})
+
+
+@login_required(login_url='login')
+def updateUser(request):
+    user = request.user
+    form = UserForm(instance=user)
+
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            return redirect('user-profile', pk=user.id)
+    return render(request, 'base/update_user.html', {'form': form})
+
+
+def topicPage(request):
+    q = request.GET.get('q') if request.GET.get('q') is not None else ''
+    topics = Topic.objects.filter(name__icontains=q)
+    return render(request, 'base/topics.html', {'topics': topics})
+
+
+def activityPage(request):
+    room_messages = Message.objects.all()[0:5]
+    return render(request, 'base/activity.html', {'room_messages': room_messages})
